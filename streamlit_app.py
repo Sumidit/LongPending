@@ -36,7 +36,7 @@ def fetch_data(dashboard_key):
         options.binary_location = "/usr/bin/chromium"  # Set path for chromium binary on Streamlit Cloud
 
         # Specify the path for the Chromium WebDriver
-        service = Service(executable_path="/usr/bin/chromium")  # Service setup
+        service = Service(executable_path="/usr/bin/chromium-driver")  # Use the chromedriver provided in Streamlit Cloud
 
         # Initialize the webdriver with the Service and Options
         driver = webdriver.Chrome(service=service, options=options)
