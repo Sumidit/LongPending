@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import re
 import time
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
 # URLs and login credentials
@@ -13,8 +13,8 @@ LOGIN_URL = "http://172.20.17.50/phoenix/public/"
 DASHBOARD_URL = {
     "For Info Site": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=info_banbeis#site_fault_list_table",
     "For Info Link": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=info_banbeis#link_fault_list_table",
-    "For SComm site": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=long_pending",  # New URL for SComm site
-    "For SComm Link": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=long_pending"  # New URL for SComm Link
+    "For SComm site": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=long_pending",
+    "For SComm Link": "http://172.20.17.50/phoenix/public/dashboard_fault_view?dashboard_value=long_pending"
 }
 USERNAME = "s.paul@summit-towers.net"
 PASSWORD = "M@rvel4408"
@@ -22,9 +22,17 @@ PASSWORD = "M@rvel4408"
 # Function to fetch data from the site based on the selected dashboard URL
 def fetch_data(dashboard_key):
     try:
-        # Setup Selenium WebDriver
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
+        # Setup Selenium WebDriver for Chromium (headless)
+        options = Options()
+        options.add_argument('--headless')  # Ensure it runs headlessly in Streamlit Cloud
+        options.add_argument('--no-sandbox')  # Disable sandboxing for Streamlit Cloud environment
+        options.add_argument('--disable-dev-shm-usage')  # Disable shared memory usage for Streamlit Cloud
+        options.add_argument('start-maximized')  # Start the browser maximized
+        options.add_argument('disable-infobars')  # Disable info bars
+        options.add_argument('--disable-extensions')  # Disable browser extensions
+        options.add_argument('--remote-debugging-port=9222')  # Enable remote debugging (headless)
+
+        # Use ChromeDriver managed by webdriver-manager
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
         # Step 1: Login to the portal
@@ -41,7 +49,7 @@ def fetch_data(dashboard_key):
         time.sleep(5)
 
         # Step 3: Extract the table data (first or second table depending on the page)
-        tables = driver.find_elements(By.TAG_NAME, "table")  # Find all tables on the page
+        tables = driver.find_elements(By.TAG_NAME, "table")
 
         if dashboard_key == "For SComm site" or dashboard_key == "For Info Site":
             table = tables[0]  # For the first table (SComm site or Info Site)
@@ -78,65 +86,6 @@ def fetch_data(dashboard_key):
 
     except Exception as e:
         st.error(f"Failed to fetch data: {e}")
-
-# Function to generate notifications
-def generate_notification(df, selected_dept, selected_client, selected_problem):
-    try:
-        # Apply filter based on selected Dept Working on this TT
-        if selected_dept != "All":
-            filtered_df = df[df["Dept Working on this TT"] == selected_dept]
-        else:
-            filtered_df = df.copy()
-
-        # Apply filter based on selected Client
-        if selected_client != "All":
-            filtered_df = filtered_df[filtered_df["Client"] == selected_client]
-
-        # Apply filter based on selected Problem Category
-        if selected_problem != "All":
-            filtered_df = filtered_df[filtered_df["Problem Category"] == selected_problem]
-
-        notifications = []
-
-        # Iterate over each unique Subcenter to create notifications
-        for subcenter in filtered_df["Sub Center"].unique():
-            sub_df = filtered_df[filtered_df["Sub Center"] == subcenter]
-
-            # Get the Dept (Dept Working on this TT) and Client Name(s) associated with this Subcenter
-            dept = sub_df["Dept Working on this TT"].unique().tolist()
-            clients = sub_df["Client"].unique().tolist()
-
-            client_notifications = []
-            for client in clients:
-                client_data = sub_df[sub_df["Client"] == client]
-                
-                # Extract TT IDs inside parentheses from the Fault ID column for the specific client
-                tt_ids = client_data["Fault ID"].apply(lambda x: re.findall(r"\(.*?\)", x)).explode().dropna().unique().tolist()
-                tt_ids = [id.strip("()") for id in tt_ids]  # Remove brackets
-
-                # Extract Durations for each TT ID
-                durations = {}
-                for tt_id in tt_ids:
-                    # Find the row corresponding to this TT ID and extract its duration
-                    tt_row = client_data[client_data["Fault ID"].str.contains(tt_id)]
-                    if not tt_row.empty:
-                        duration = tt_row["Duration"].values[0]  # Get the duration of this TT ID
-                        durations[tt_id] = duration
-                
-                # Add Client Name and TT IDs with Duration to the notification
-                client_notifications.append(f"{client} TT IDs: " + ", ".join([f"{tt_id} ({durations[tt_id]})" for tt_id in tt_ids]))
-
-            # Format the notification message
-            message = (
-                f"**Dept Working on this TT:** {', '.join(dept)}\n"
-                f"**Client Name(s):** {', '.join(client_notifications)}\n"
-                f"**Subcenter:** {subcenter}"
-            )
-            notifications.append(message)
-
-        return notifications
-    except Exception as e:
-        return [f"Error processing data: {e}"]
 
 # Streamlit UI
 st.title("LongPending TT Finder ⏳")
