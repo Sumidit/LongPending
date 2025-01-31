@@ -1,36 +1,13 @@
-import streamlit as st
+import time
 import pandas as pd
 import re
-import time
+import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import subprocess
-import os
-
-# Function to check if Chrome and Chromedriver are working
-def check_chrome_and_driver():
-    try:
-        # Check for chrome version (if installed)
-        chrome_version = subprocess.getoutput("google-chrome --version")
-        if "google-chrome" not in chrome_version.lower():
-            st.error("Chrome is not installed or not found.")
-            return False
-        
-        # Check if chromedriver exists in expected path
-        chromedriver_path = os.path.join(os.environ.get("HOME", ""), ".wdm/drivers/chromedriver")
-        if not os.path.isfile(chromedriver_path):
-            st.error(f"Chromedriver not found at {chromedriver_path}")
-            return False
-        
-        return True
-    except Exception as e:
-        st.error(f"Error checking Chrome and Chromedriver: {e}")
-        return False
 
 # URLs and login credentials
 LOGIN_URL = "http://172.20.17.50/phoenix/public/"
@@ -46,34 +23,33 @@ PASSWORD = "M@rvel4408"
 # Function to fetch data from the site based on the selected dashboard URL
 def fetch_data(dashboard_key):
     try:
-        # First check if Chrome and Chromedriver are available
-        if not check_chrome_and_driver():
-            return
-        
-        # Setup Selenium WebDriver
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        # Set up Chrome options
+        options = Options()
+        options.add_argument("--headless")  # Run headless (without GUI)
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+
+        # Use webdriver-manager to automatically download and manage ChromeDriver
+        service = Service(ChromeDriverManager().install())
+
+        # Set up the WebDriver
+        driver = webdriver.Chrome(service=service, options=options)
 
         # Step 1: Login to the portal
         driver.get(LOGIN_URL)
-        
-        # Wait for the username input to load
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username")))
+        time.sleep(3)
 
         driver.find_element(By.NAME, "username").send_keys(USERNAME)
         driver.find_element(By.NAME, "password").send_keys(PASSWORD)
         driver.find_element(By.NAME, "password").send_keys(Keys.RETURN)
-        
-        # Wait for the next page to load
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+        time.sleep(5)
 
         # Step 2: Navigate to the selected dashboard URL
         driver.get(DASHBOARD_URL[dashboard_key])
+        time.sleep(5)
 
         # Step 3: Extract the table data (first or second table depending on the page)
-        WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.TAG_NAME, "table")))
-        tables = driver.find_elements(By.TAG_NAME, "table")
+        tables = driver.find_elements(By.TAG_NAME, "table")  # Find all tables on the page
 
         if dashboard_key == "For SComm site" or dashboard_key == "For Info Site":
             table = tables[0]  # For the first table (SComm site or Info Site)
@@ -86,7 +62,6 @@ def fetch_data(dashboard_key):
                 return
 
         rows = table.find_elements(By.TAG_NAME, "tr")
-
         data = []
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
@@ -102,7 +77,7 @@ def fetch_data(dashboard_key):
             "Ticket Comments", "Task Comments", "Dept Working on this TT", "View / Edit"
         ])
 
-        # Save data to session state
+        # Save data to session state (if using Streamlit)
         st.session_state["df"] = df
 
         st.success(f"Dashboard data extracted successfully for '{dashboard_key}'!")
@@ -110,7 +85,6 @@ def fetch_data(dashboard_key):
 
     except Exception as e:
         st.error(f"Failed to fetch data: {e}")
-        driver.quit()
 
 # Function to generate notifications
 def generate_notification(df, selected_dept, selected_client, selected_problem):
@@ -228,3 +202,4 @@ if "df" in st.session_state:
 
         for msg in notification_messages:
             st.info(msg)
+
