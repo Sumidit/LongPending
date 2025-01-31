@@ -4,6 +4,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import os
 
@@ -34,8 +35,11 @@ def fetch_data(dashboard_key):
         # Set the correct binary location for Chromium (available in Streamlit Cloud)
         options.binary_location = "/usr/bin/chromium"  # Set path for chromium binary on Streamlit Cloud
 
-        # Initialize the webdriver with the above options, without using webdriver-manager
-        driver = webdriver.Chrome(executable_path="/usr/bin/chromium", options=options)
+        # Specify the path for the Chromium WebDriver
+        service = Service(executable_path="/usr/bin/chromium")  # Service setup
+
+        # Initialize the webdriver with the Service and Options
+        driver = webdriver.Chrome(service=service, options=options)
 
         # Step 1: Login to the portal
         driver.get(LOGIN_URL)
