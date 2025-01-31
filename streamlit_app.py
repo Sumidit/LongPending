@@ -9,6 +9,28 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import subprocess
+import os
+
+# Function to check if Chrome and Chromedriver are working
+def check_chrome_and_driver():
+    try:
+        # Check for chrome version (if installed)
+        chrome_version = subprocess.getoutput("google-chrome --version")
+        if "google-chrome" not in chrome_version.lower():
+            st.error("Chrome is not installed or not found.")
+            return False
+        
+        # Check if chromedriver exists in expected path
+        chromedriver_path = os.path.join(os.environ.get("HOME", ""), ".wdm/drivers/chromedriver")
+        if not os.path.isfile(chromedriver_path):
+            st.error(f"Chromedriver not found at {chromedriver_path}")
+            return False
+        
+        return True
+    except Exception as e:
+        st.error(f"Error checking Chrome and Chromedriver: {e}")
+        return False
 
 # URLs and login credentials
 LOGIN_URL = "http://172.20.17.50/phoenix/public/"
@@ -24,6 +46,10 @@ PASSWORD = "M@rvel4408"
 # Function to fetch data from the site based on the selected dashboard URL
 def fetch_data(dashboard_key):
     try:
+        # First check if Chrome and Chromedriver are available
+        if not check_chrome_and_driver():
+            return
+        
         # Setup Selenium WebDriver
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
@@ -129,6 +155,7 @@ def generate_notification(df, selected_dept, selected_client, selected_problem):
                     if not tt_row.empty:
                         duration = tt_row["Duration"].values[0]  # Get the duration of this TT ID
                         durations[tt_id] = duration
+                
                 # Add Client Name and TT IDs with Duration to the notification
                 client_notifications.append(f"{client} TT IDs: " + ", ".join([f"{tt_id} ({durations[tt_id]})" for tt_id in tt_ids]))
 
@@ -201,4 +228,3 @@ if "df" in st.session_state:
 
         for msg in notification_messages:
             st.info(msg)
-
