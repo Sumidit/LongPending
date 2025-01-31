@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-import os
+from webdriver_manager.chrome import ChromeDriverManager  # Automatically install the right chromedriver
 
 # URLs and login credentials
 LOGIN_URL = "http://172.20.17.50/phoenix/public/"
@@ -32,13 +32,8 @@ def fetch_data(dashboard_key):
         options.add_argument('--start-maximized')  # Start in maximized mode
         options.add_argument('disable-infobars')  # Disable info bars
 
-        # Set the correct binary location for Chromium (available in Streamlit Cloud)
-        options.binary_location = "/usr/bin/chromium"  # Set path for chromium binary on Streamlit Cloud
-
-        # Specify the path for the Chromium WebDriver
-        service = Service(executable_path="/usr/bin/chromium-driver")  # Use the chromedriver provided in Streamlit Cloud
-
-        # Initialize the webdriver with the Service and Options
+        # Setup the driver with the correct path to chromedriver using the Service class
+        service = Service(ChromeDriverManager().install())  # This installs and sets the correct chromedriver
         driver = webdriver.Chrome(service=service, options=options)
 
         # Step 1: Login to the portal
