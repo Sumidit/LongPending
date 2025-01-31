@@ -22,17 +22,20 @@ PASSWORD = "M@rvel4408"
 # Function to fetch data from the site based on the selected dashboard URL
 def fetch_data(dashboard_key):
     try:
-        # Setup Selenium WebDriver for Chromium (headless)
+        # Setup headless Chromium
         options = Options()
-        options.add_argument('--headless')  # Ensure it runs headlessly in Streamlit Cloud
-        options.add_argument('--no-sandbox')  # Disable sandboxing for Streamlit Cloud environment
-        options.add_argument('--disable-dev-shm-usage')  # Disable shared memory usage for Streamlit Cloud
-        options.add_argument('start-maximized')  # Start the browser maximized
+        options.add_argument('--headless')  # Headless mode (no UI)
+        options.add_argument('--no-sandbox')  # Disable sandbox for compatibility in cloud environments
+        options.add_argument('--disable-dev-shm-usage')  # Disable dev shm usage
+        options.add_argument('--remote-debugging-port=9222')  # Enable remote debugging
+        options.add_argument('--disable-extensions')  # Disable browser extensions for better performance
+        options.add_argument('--start-maximized')  # Start in maximized mode
         options.add_argument('disable-infobars')  # Disable info bars
-        options.add_argument('--disable-extensions')  # Disable browser extensions
-        options.add_argument('--remote-debugging-port=9222')  # Enable remote debugging (headless)
 
-        # Use ChromeDriver managed by webdriver-manager
+        # Use default chromium binary available on streamlit cloud
+        options.binary_location = "/usr/bin/chromium"  # Set path for chromium binary on Streamlit Cloud
+
+        # Initialize the webdriver with the above options
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
         # Step 1: Login to the portal
