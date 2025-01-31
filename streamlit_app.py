@@ -7,6 +7,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # URLs and login credentials
 LOGIN_URL = "http://172.20.17.50/phoenix/public/"
@@ -29,19 +31,23 @@ def fetch_data(dashboard_key):
 
         # Step 1: Login to the portal
         driver.get(LOGIN_URL)
-        time.sleep(3)
+        
+        # Wait for the username input to load
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username")))
 
         driver.find_element(By.NAME, "username").send_keys(USERNAME)
         driver.find_element(By.NAME, "password").send_keys(PASSWORD)
         driver.find_element(By.NAME, "password").send_keys(Keys.RETURN)
-        time.sleep(5)
+        
+        # Wait for the next page to load
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "table")))
 
         # Step 2: Navigate to the selected dashboard URL
         driver.get(DASHBOARD_URL[dashboard_key])
-        time.sleep(5)
 
         # Step 3: Extract the table data (first or second table depending on the page)
-        tables = driver.find_elements(By.TAG_NAME, "table")  # Find all tables on the page
+        WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.TAG_NAME, "table")))
+        tables = driver.find_elements(By.TAG_NAME, "table")
 
         if dashboard_key == "For SComm site" or dashboard_key == "For Info Site":
             table = tables[0]  # For the first table (SComm site or Info Site)
@@ -78,6 +84,7 @@ def fetch_data(dashboard_key):
 
     except Exception as e:
         st.error(f"Failed to fetch data: {e}")
+        driver.quit()
 
 # Function to generate notifications
 def generate_notification(df, selected_dept, selected_client, selected_problem):
@@ -122,7 +129,6 @@ def generate_notification(df, selected_dept, selected_client, selected_problem):
                     if not tt_row.empty:
                         duration = tt_row["Duration"].values[0]  # Get the duration of this TT ID
                         durations[tt_id] = duration
-                
                 # Add Client Name and TT IDs with Duration to the notification
                 client_notifications.append(f"{client} TT IDs: " + ", ".join([f"{tt_id} ({durations[tt_id]})" for tt_id in tt_ids]))
 
@@ -195,3 +201,4 @@ if "df" in st.session_state:
 
         for msg in notification_messages:
             st.info(msg)
+
